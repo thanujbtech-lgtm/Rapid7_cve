@@ -2,7 +2,6 @@ import re
 import os
 
 from bs4 import BeautifulSoup
-from datetime import datetime
 from openpyxl import Workbook, load_workbook
 from playwright.sync_api import sync_playwright
 
@@ -61,6 +60,8 @@ def load_existing_keys():
 
 # =========================================
 # SAVE
+# NO SORTING
+# KEEP APPEND ORDER
 # =========================================
 
 def save_all(rows):
@@ -77,15 +78,13 @@ def save_all(rows):
         "LINK"
     ])
 
-    rows_sorted = sorted(
-        rows,
-        key=lambda x: datetime.strptime(
-            x[1],
-            "%Y-%m-%d"
-        )
-    )
+    # =====================================
+    # KEEP ORIGINAL ORDER
+    # OLDEST EXISTING ROWS STAY TOP
+    # NEWLY SCRAPED ROWS STAY BOTTOM
+    # =====================================
 
-    for r in rows_sorted:
+    for r in rows:
 
         ws.append(r)
 
@@ -112,6 +111,10 @@ def get_html(playwright):
     )
 
     page.wait_for_timeout(5000)
+
+    # =====================================
+    # CLICK LOAD MORE
+    # =====================================
 
     while True:
 
@@ -258,29 +261,40 @@ def main():
                 link
             )
 
-            if key not in existing_keys:
+            # =================================
+            # SKIP DUPLICATES
+            # =================================
 
-                print(
-                    "ADDING:",
-                    cve,
-                    publish_date
-                )
+            if key in existing_keys:
+                continue
 
-                new_rows.append((
-                    cve,
-                    publish_date,
-                    title,
-                    severity,
-                    link
-                ))
+            print(
+                "ADDING:",
+                cve,
+                publish_date
+            )
 
-                existing_keys.add(key)
+            row = (
+                cve,
+                publish_date,
+                title,
+                severity,
+                link
+            )
+
+            new_rows.append(row)
+
+            existing_keys.add(key)
+
+    # =========================================
+    # APPEND NEW ROWS TO BOTTOM
+    # =========================================
+
+    all_rows = existing_rows + new_rows
 
     # =========================================
     # SAVE FILE
     # =========================================
-
-    all_rows = existing_rows + new_rows
 
     if new_rows:
 
@@ -288,6 +302,10 @@ def main():
 
         print(
             f"\nAdded {len(new_rows)} new rows"
+        )
+
+        print(
+            "\nNewest scraped rows appended at bottom"
         )
 
     else:
