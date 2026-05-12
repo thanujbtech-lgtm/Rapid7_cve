@@ -1,0 +1,44 @@
+name: Rapid7 CVE Automation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rapid7:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Install Playwright
+      run: |
+        playwright install chromium
+
+    - name: Run Rapid7 Scraper
+      run: |
+        python rapid7.py
+
+    - name: Commit Excel Updates
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "actions@github.com"
+
+        git add rapid7_cves.xlsx
+
+        git commit -m "Update Rapid7 CVEs" || echo "No changes"
+
+        git push
